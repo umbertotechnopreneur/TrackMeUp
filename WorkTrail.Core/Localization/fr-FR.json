@@ -86,7 +86,7 @@
   "Export.NoSources": "Aucun texte sélectionné ou enregistré dans cette période.",
   "Export.AiNotReady": "Activez et configurez votre fournisseur d’IA dans les paramètres avant de générer un résumé.",
   "Export.AiDailyLimit": "Limite quotidienne de requêtes IA atteinte.",
-  "Export.SummaryTooLarge": "Texte trop long pour un résumé. Réduisez la période ou désélectionnez l’OCR.",
+  "Export.SummaryTooLarge": "Données sélectionnées : {0} caractères ; limite : {1}. Réduisez la période ou désélectionnez une source de texte.",
   "Export.SummaryIncomplete": "Résumé vide, incomplet ou trop long reçu du fournisseur. Essayez une période plus courte.",
   "Export.Table.Summary": "Résumé",
   "Export.Table.Days": "Jours",

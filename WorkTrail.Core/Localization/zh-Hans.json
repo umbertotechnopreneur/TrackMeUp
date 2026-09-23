@@ -86,7 +86,7 @@
   "Export.NoSources": "未选择文本，或此时间段没有已保存文本。",
   "Export.AiNotReady": "生成摘要前，请在设置中启用并配置 AI 提供商。",
   "Export.AiDailyLimit": "已达到每日 AI 请求上限。",
-  "Export.SummaryTooLarge": "文本过多，无法一次摘要。请缩短时间范围或取消 OCR。",
+  "Export.SummaryTooLarge": "所选源数据：{0} 个字符；上限：{1}。请缩短时间范围或取消选择一种文本来源。",
   "Export.SummaryIncomplete": "提供商返回了空白、不完整或过长的摘要。请缩短时间范围。",
   "Export.Table.Summary": "概览",
   "Export.Table.Days": "日期",

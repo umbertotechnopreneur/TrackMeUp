@@ -8,6 +8,7 @@ namespace WorkTrail.Services;
 /// <summary>Summarizes explicitly selected saved text using the existing provider and usage pipeline.</summary>
 internal sealed class ReportSummaryService(LocalStore store, IAIDecoder? decoder = null)
 {
+    private const int MaxSourceCharacters = 160_000;
     internal async Task<ReportSummaryResult> GenerateAsync(
         ReportSummaryRequest request,
         AppSettings settings,
@@ -16,7 +17,8 @@ internal sealed class ReportSummaryService(LocalStore store, IAIDecoder? decoder
     {
         var exports = new ReportExportService(store);
         exports.Validate(request.Options);
-        if (!Enum.IsDefined(request.Grouping) || (!request.IncludeDescriptions && !request.IncludeOcr && !request.IncludeWindowTitles))
+        if (!Enum.IsDefined(request.Grouping) || (!request.IncludeDescriptionExcerpt && !request.IncludeCompleteDescription
+            && !request.IncludeOcr && !request.IncludeWindowTitles))
             throw new ReportExportValidationException("Export.NoSources");
         var captures = await Task.Run(() => exports.ReadCaptures(request.Options, cancellationToken), cancellationToken).ConfigureAwait(false);
         var prompt = BuildPrompt(request, captures, out var sourceCount);
@@ -64,16 +66,20 @@ internal sealed class ReportSummaryService(LocalStore store, IAIDecoder? decoder
         {
             date = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(item.CapturedAt, zone).DateTime).ToString("yyyy-MM-dd"),
             application = item.ForegroundApplication,
-            description = request.IncludeDescriptions ? item.AiDescriptionMarkdown : null,
+            description_excerpt = request.IncludeDescriptionExcerpt
+                ? ReportExportService.Excerpt(ReportExportService.PlainText(item.AiDescriptionMarkdown), 240) : null,
+            description_markdown = request.IncludeCompleteDescription ? item.AiDescriptionMarkdown : null,
             ocr = request.IncludeOcr ? item.TextSnapshot?.Ocr.RawText : null,
             title = request.IncludeWindowTitles ? item.ForegroundWindowTitle : null
-        }).Where(item => !string.IsNullOrWhiteSpace(item.description) || !string.IsNullOrWhiteSpace(item.ocr) || !string.IsNullOrWhiteSpace(item.title))
+        }).Where(item => !string.IsNullOrWhiteSpace(item.description_excerpt) || !string.IsNullOrWhiteSpace(item.description_markdown)
+            || !string.IsNullOrWhiteSpace(item.ocr) || !string.IsNullOrWhiteSpace(item.title))
             .Distinct().ToArray();
         sourceCount = sources.Length;
         if (sourceCount == 0) throw new ReportExportValidationException("Export.NoSources");
         var data = JsonSerializer.Serialize(sources);
         // Never silently discard source records to fit a provider context window.
-        if (data.Length > 160_000) throw new ReportExportValidationException("Export.SummaryTooLarge");
+        if (data.Length > MaxSourceCharacters)
+            throw new ReportExportValidationException("Export.SummaryTooLarge", data.Length, MaxSourceCharacters);
         return $"""
             Summarize the recorded activity in language {new LocalizationService(request.Options.Language).Language}.
             Group by {request.Grouping}. Detail: {(request.Detailed ? "detailed" : "brief")}.

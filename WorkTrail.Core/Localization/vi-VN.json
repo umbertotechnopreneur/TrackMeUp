@@ -86,7 +86,7 @@
   "Export.NoSources": "Chưa chọn văn bản hoặc không có văn bản lưu trong khoảng này.",
   "Export.AiNotReady": "Bật và cấu hình nhà cung cấp AI trong Cài đặt trước khi tạo bản tóm tắt.",
   "Export.AiDailyLimit": "Đã đạt giới hạn yêu cầu AI hằng ngày.",
-  "Export.SummaryTooLarge": "Văn bản quá dài để tóm tắt. Rút ngắn khoảng thời gian hoặc bỏ chọn OCR.",
+  "Export.SummaryTooLarge": "Dữ liệu nguồn đã chọn: {0} ký tự; giới hạn: {1}. Rút ngắn khoảng thời gian hoặc bỏ chọn một nguồn văn bản.",
   "Export.SummaryIncomplete": "Nhà cung cấp trả về bản tóm tắt trống, chưa hoàn chỉnh hoặc quá dài. Hãy chọn khoảng ngắn hơn.",
   "Export.Table.Summary": "Tổng quan",
   "Export.Table.Days": "Ngày",

@@ -84,7 +84,9 @@
                             <TextBlock Tag="Export.SummaryIntro" TextWrapping="Wrap" Foreground="{ThemeResource TextFillColorSecondaryBrush}" />
                             <ComboBox x:Name="GroupingCombo" Tag="Export.Grouping" HorizontalAlignment="Stretch" SelectionChanged="SummaryOptionsChanged" />
                             <CheckBox x:Name="DetailedCheck" Tag="Export.Detailed" Click="SummaryOptionsChanged" />
-                            <CheckBox x:Name="SummaryDescriptionsCheck" Tag="Export.SavedDescriptions" IsChecked="True" Click="SummaryOptionsChanged" />
+                            <TextBlock Tag="Export.SavedDescriptions" TextWrapping="Wrap" />
+                            <CheckBox x:Name="SummaryExcerptCheck" Tag="Export.Brief" IsChecked="True" Margin="16,0,0,0" Click="SummaryOptionsChanged" />
+                            <CheckBox x:Name="SummaryFullDescriptionCheck" Tag="Export.CompleteText" Margin="16,0,0,0" Click="SummaryOptionsChanged" />
                             <CheckBox x:Name="SummaryOcrCheck" Tag="Export.Ocr" Click="SummaryOptionsChanged" />
                             <CheckBox x:Name="SummaryTitlesCheck" Tag="Export.Titles" Click="SummaryOptionsChanged" />
                             <TextBlock x:Name="ProviderText" TextWrapping="Wrap" />

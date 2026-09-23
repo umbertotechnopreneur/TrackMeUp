@@ -320,9 +320,21 @@ internal sealed partial class ReportExportWindow : Window
         if (!status.Succeeded || status.Value is null) { ShowStatus(status.MessageKey, InfoBarSeverity.Error); return; }
         ProviderText.Text = status.Value.Provider + " · " + status.Value.Model;
         var request = new ReportSummaryRequest(CollectOptions(), (ReportSummaryGrouping)GroupingCombo.SelectedIndex,
-            DetailedCheck.IsChecked == true, SummaryDescriptionsCheck.IsChecked == true, SummaryOcrCheck.IsChecked == true, SummaryTitlesCheck.IsChecked == true);
+            DetailedCheck.IsChecked == true, SummaryExcerptCheck.IsChecked == true, SummaryFullDescriptionCheck.IsChecked == true,
+            SummaryOcrCheck.IsChecked == true, SummaryTitlesCheck.IsChecked == true);
         var result = await _application.GenerateReportSummaryAsync(request, token);
-        if (!result.Succeeded || result.Value is null) { ShowStatus(result.MessageKey, InfoBarSeverity.Error); return; }
+        if (!result.Succeeded || result.Value is null)
+        {
+            var size = result.Issues.FirstOrDefault(issue => issue.Code == "export.summary_too_large");
+            if (size?.ActualLength is { } actualLength && size.Limit is { } limit)
+            {
+                StatusBar.Message = _strings.Format("Export.SummaryTooLarge", actualLength.ToString("N0", _strings.Culture), limit.ToString("N0", _strings.Culture));
+                StatusBar.Severity = InfoBarSeverity.Error;
+                StatusBar.IsOpen = true;
+            }
+            else ShowStatus(result.MessageKey, InfoBarSeverity.Error);
+            return;
+        }
         SummaryText.Text = result.Value.Text;
         IncludeSummaryCheck.IsChecked = true;
         ShowStatus("Export.SummaryReady", InfoBarSeverity.Success);
