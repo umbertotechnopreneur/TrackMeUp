@@ -3,7 +3,6 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Text.Json;
 using Xunit;
 
 namespace WorkTrail.Core.Tests;
@@ -11,35 +10,27 @@ namespace WorkTrail.Core.Tests;
 public sealed class StorePublishingWorkflowContractTests
 {
     [Fact]
-    public void StoreWorkflow_IsValidationOnlyAndCannotPublish()
+    public void RepositoryWorkflows_DoNotPublishToMicrosoftStore()
     {
-        var workflow = File.ReadAllText(RepositoryFile(".github", "workflows", "store-listing.yml"))
-            .Replace("\r\n", "\n", StringComparison.Ordinal);
+        var workflowPaths = Directory.GetFiles(RepositoryFile(".github", "workflows"), "*.yml");
+        Assert.NotEmpty(workflowPaths);
 
-        Assert.Contains("workflow_dispatch:", workflow, StringComparison.Ordinal);
-        Assert.Contains(".\\scripts\\WorkTrail.ps1 -Action ValidateStoreListing", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("environment:", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("secrets.", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("msstore", workflow, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("submission publish", workflow, StringComparison.OrdinalIgnoreCase);
-        Assert.DoesNotContain("STORE_AUTOPUBLISH", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("AZURE_AD_APPLICATION_SECRET", workflow, StringComparison.Ordinal);
-        Assert.DoesNotContain("--clientSecret", workflow, StringComparison.Ordinal);
+        foreach (var workflowPath in workflowPaths)
+        {
+            var workflow = File.ReadAllText(workflowPath);
+            Assert.DoesNotContain("msstore", workflow, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("submission publish", workflow, StringComparison.OrdinalIgnoreCase);
+            Assert.DoesNotContain("STORE_AUTOPUBLISH", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("AZURE_AD_APPLICATION_SECRET", workflow, StringComparison.Ordinal);
+            Assert.DoesNotContain("--clientSecret", workflow, StringComparison.Ordinal);
+        }
     }
 
     [Fact]
-    public void StoreListing_HasNoAutomaticPublicationSwitch()
+    public void PrivateStoreListingAndItsWorkflow_AreNotBundledWithRepository()
     {
-        using var listing = JsonDocument.Parse(File.ReadAllText(RepositoryFile("store", "listing.json")));
-        var publishingProperties = listing.RootElement
-            .GetProperty("publishing")
-            .EnumerateObject()
-            .Select(property => property.Name)
-            .ToArray();
-
-        Assert.Equal(
-            new[] { "partnerCenterProductId", "partnerCenterMetadataPath" },
-            publishingProperties);
+        Assert.False(File.Exists(RepositoryFile("store", "listing.json")));
+        Assert.False(File.Exists(RepositoryFile(".github", "workflows", "store-listing.yml")));
     }
 
     private static string RepositoryFile(params string[] pathSegments)

@@ -9,6 +9,8 @@ This is a compact historical index of durable WorkTrail milestones. It intention
 - Made repository discovery use the solution file and checked the canonical locale catalog
   against shipped localization files, keeping manifest and duplicate-property validation
   independent of the private Store listing.
+- Kept the public MIT contract and checks against automatic Store publication independent
+  of removed listing drafts and workflows.
 
 ### Guided provider setup and About polish
 
