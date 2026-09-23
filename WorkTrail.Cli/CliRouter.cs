@@ -2,6 +2,7 @@
 
 using Spectre.Console;
 using WorkTrail.Application;
+using WorkTrail.Services;
 
 namespace WorkTrail.Cli;
 
@@ -251,6 +252,13 @@ public sealed partial class CliRouter(IWorkTrailApplication application, CliOutp
 
                     variable = status.Value.KeyVariable;
                 }
+                var keyStrings = new LocalizationService(_options.Language);
+                AnsiConsole.MarkupLine(Markup.Escape(keyStrings.Translate("ProviderSetup.Ai.Cost")));
+                if (!AnsiConsole.Confirm(Markup.Escape(keyStrings.Translate("ProviderSetup.Continue")), defaultValue: false))
+                {
+                    return ConfirmationRequired();
+                }
+
                 var secret = AnsiConsole.Prompt(new TextPrompt<string>($"[yellow]{Markup.Escape(_output.Text("prompt.apiKey"))}:[/] ").Secret());
                 return await WriteAsync(_application.SetAiKeyAsync(variable, secret, cancellationToken));
             default: return InvalidCommand();

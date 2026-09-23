@@ -333,21 +333,35 @@ public sealed partial class OptionsControl : UserControl
         var keyName = string.IsNullOrWhiteSpace(AiApiKeyNameBox.Text) ? DefaultApiKeyName(provider) : AiApiKeyNameBox.Text.Trim();
         var secret = ApiKeyBox.Password;
         ApiKeyBox.Password = string.Empty;
-        var result = await _aiState.SetSecretAsync(keyName, secret, CancellationToken.None);
-        secret = string.Empty;
-        var keyReady = result.Succeeded && _aiState.CanEnable;
-        if (keyReady)
+        var button = (Button)sender;
+        button.IsEnabled = false;
+        ShowStatus(T("ProviderSetup.Verifying"));
+        try
         {
-            ApiKeyExpander.IsExpanded = false;
-        }
+            var result = await _aiState.SetSecretAsync(keyName, secret, CancellationToken.None);
+            var keyReady = result.Succeeded && _aiState.CanEnable;
+            if (keyReady)
+            {
+                ApiKeyExpander.IsExpanded = false;
+            }
 
-        ShowStatus(keyReady
-            ? T("ApiKeySaved")
-            : result.Succeeded
-                ? T("Options.ApiKeyStatus.Invalid")
-                : result.Code == "ai.key.stored_status_unavailable"
-                    ? T("Options.ApiKeyStatus.RefreshFailed")
-                : T("Options.ApiKeyError"));
+            ShowStatus(keyReady
+                ? T("ProviderSetup.Success")
+                : result.Succeeded
+                    ? T("Options.ApiKeyStatus.Invalid")
+                    : result.Code == "ai.key.stored_status_unavailable"
+                        ? T("Options.ApiKeyStatus.RefreshFailed")
+                        : T(result.MessageKey));
+        }
+        catch (Exception)
+        {
+            ShowStatus(T("ProviderSetup.Error.Unavailable"));
+        }
+        finally
+        {
+            secret = string.Empty;
+            button.IsEnabled = true;
+        }
     }
 
     /// <summary>Forwards an AI enabled-state request through the shared observable application state.</summary>

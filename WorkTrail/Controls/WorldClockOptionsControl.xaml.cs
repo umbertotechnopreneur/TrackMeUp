@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+﻿// SPDX-License-Identifier: MIT
 
 using Microsoft.UI.Xaml;
 using Microsoft.UI.Xaml.Automation;
@@ -13,7 +13,6 @@ namespace WorkTrail.Controls;
 /// <summary>Collects world-clock presentation options and forwards mutations to the shared application facade.</summary>
 public sealed partial class WorldClockOptionsControl : UserControl
 {
-    private const string ConfiguredWeatherKeyMask = "****************";
     private IWorkTrailApplication? _application;
     private LocalizationService _strings = new("system");
     private CancellationToken _lifetimeToken;
@@ -21,8 +20,6 @@ public sealed partial class WorldClockOptionsControl : UserControl
     private bool _busy;
     private bool _canAddClock;
     private bool _weatherKeyConfigured;
-    private bool _weatherKeyRefreshPending;
-    private string? _weatherActionStatusKey;
     private int _worldClockOpacityPercent = 100;
     private int _pendingWorldClockOpacityPercent = 100;
     private bool _worldClockShowInTaskbar = true;
@@ -61,6 +58,9 @@ public sealed partial class WorldClockOptionsControl : UserControl
 
     /// <summary>Occurs when the weather-provider setup link should be opened by the host.</summary>
     public event EventHandler? ProviderLinkRequested;
+
+    /// <summary>Occurs when the guided weather credential sheet should be shown.</summary>
+    public event EventHandler? KeySetupRequested;
 
     /// <summary>Attaches the shared application facade and applies the current localized presentation state.</summary>
     public void Initialize(
@@ -120,29 +120,6 @@ public sealed partial class WorldClockOptionsControl : UserControl
         _strings = strings ?? throw new ArgumentNullException(nameof(strings));
         UiLocalization.Apply(this, _strings);
         ApplyLocalizedPresentation();
-        if (_weatherActionStatusKey is not null)
-        {
-            ShowWeatherActionStatus(_weatherActionStatusKey);
-        }
-    }
-
-    /// <summary>Completes the refresh requested after a weather key was stored.</summary>
-    public void CompleteWeatherKeyRefresh(bool succeeded)
-    {
-        if (!_weatherKeyRefreshPending)
-        {
-            return;
-        }
-
-        _weatherKeyRefreshPending = false;
-        if (!succeeded)
-        {
-            ShowWeatherActionStatus("WorldClock.Options.Weather.KeyRefreshFailed");
-            return;
-        }
-
-        SetWeatherKeyPresence(configured: true);
-        SetSaveWeatherKeyAction("WorldClock.Options.Weather.KeyAction.Change");
     }
 
     private async void WeatherEnabledSwitch_Toggled(object sender, RoutedEventArgs e)
@@ -153,7 +130,6 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
 
         var requested = WeatherEnabledSwitch.IsOn;
-        ClearWeatherActionStatus();
         SetBusy(true);
         try
         {
@@ -188,72 +164,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
         }
     }
 
-    private async void SaveWeatherKeyButton_Click(object sender, RoutedEventArgs e)
-    {
-        if (_application is null || _busy)
-        {
-            return;
-        }
-
-        var secret = WeatherApiKeyBox.Password;
-        ClearWeatherActionStatus();
-        if (string.IsNullOrWhiteSpace(secret))
-        {
-            ShowWeatherActionStatus("WorldClock.Options.Weather.KeyInvalid");
-            return;
-        }
-
-        SetBusy(true);
-        ShowWeatherActionStatus("WorldClock.Options.Weather.KeyValidating");
-        try
-        {
-            var result = await _application.SetWorldClockWeatherKeyAsync(secret, _lifetimeToken);
-            if (result.Succeeded
-                && result.Code is "world_clocks.weather.key.stored" or "world_clocks.weather.key.stored_rate_limited")
-            {
-                SetWeatherKeyPresence(configured: true);
-                ShowWeatherActionStatus(result.Code == "world_clocks.weather.key.stored_rate_limited"
-                    ? "WorldClock.Options.Weather.KeySavedRateLimited"
-                    : "WorldClock.Options.Weather.KeySaved");
-                SetSaveWeatherKeyAction("WorldClock.Options.Weather.KeyAction.Change");
-                _weatherKeyRefreshPending = true;
-                RefreshRequested?.Invoke(this, EventArgs.Empty);
-                return;
-            }
-
-            if (result.Code == "world_clocks.weather.key.invalid")
-            {
-                ShowWeatherActionStatus("WorldClock.Options.Weather.KeyInvalid");
-            }
-            else if (result.Code == "world_clocks.weather.key.rejected")
-            {
-                ShowWeatherActionStatus("WorldClock.Options.Weather.KeyRejected");
-            }
-            else if (result.Code == "world_clocks.weather.key.validation_unavailable")
-            {
-                ShowWeatherActionStatus("WorldClock.Options.Weather.KeyValidationUnavailable");
-            }
-            else
-            {
-                ShowWeatherActionStatus("WorldClock.Options.Weather.KeySaveFailed");
-            }
-        }
-        catch (OperationCanceledException) when (_lifetimeToken.IsCancellationRequested)
-        {
-            // Closing the detached surface cancels the optional credential mutation.
-        }
-        catch (Exception)
-        {
-            ShowWeatherActionStatus("WorldClock.Options.Weather.KeySaveFailed");
-        }
-        finally
-        {
-            // The secret exists only long enough to cross the application facade.
-            WeatherApiKeyBox.Password = string.Empty;
-            secret = string.Empty;
-            SetBusy(false);
-        }
-    }
+    private void SaveWeatherKeyButton_Click(object sender, RoutedEventArgs e) =>
+        KeySetupRequested?.Invoke(this, EventArgs.Empty);
 
     private void AlwaysOnTopSwitch_Toggled(object sender, RoutedEventArgs e)
     {
@@ -554,23 +466,10 @@ public sealed partial class WorldClockOptionsControl : UserControl
         WeatherStatusText.Text = T(presentation.Key);
         AutomationProperties.SetName(WeatherStatusText, WeatherStatusText.Text);
         VisualStateManager.GoToState(this, presentation.VisualState, false);
-        SetWeatherKeyPresence(status?.IsProviderConfigured == true);
+        _weatherKeyConfigured = status?.IsProviderConfigured == true;
         SetSaveWeatherKeyAction(status?.IsProviderConfigured == true
             ? "WorldClock.Options.Weather.KeyAction.Change"
             : "WorldClock.Options.Weather.KeyAction.Set");
-    }
-
-    private void SetWeatherKeyPresence(bool configured)
-    {
-        _weatherKeyConfigured = configured;
-        WeatherApiKeyBox.PlaceholderText = configured
-            ? ConfiguredWeatherKeyMask
-            : string.Empty;
-        AutomationProperties.SetHelpText(
-            WeatherApiKeyBox,
-            configured
-                ? T("WorldClock.Options.Weather.ApiKey.ConfiguredHelp")
-                : WeatherApiKeyStorageNote.Text);
     }
 
     private void RestoreWeatherToggle(bool value)
@@ -586,7 +485,6 @@ public sealed partial class WorldClockOptionsControl : UserControl
         BusyIndicator.IsActive = busy;
         BusyIndicator.Visibility = busy ? Visibility.Visible : Visibility.Collapsed;
         WeatherEnabledSwitch.IsEnabled = !busy;
-        WeatherApiKeyBox.IsEnabled = !busy;
         WeatherProviderLinkButton.IsEnabled = !busy;
         SaveWeatherKeyButton.IsEnabled = !busy;
         AddClockButton.IsEnabled = !busy && _canAddClock;
@@ -597,25 +495,8 @@ public sealed partial class WorldClockOptionsControl : UserControl
         LunarPhaseShowInTaskbarSwitch.IsEnabled = !busy;
     }
 
-    private void ShowWeatherActionStatus(string key)
-    {
-        _weatherActionStatusKey = key;
-        WeatherActionStatusText.Text = T(key);
-        WeatherActionStatusText.Visibility = Visibility.Visible;
-        AutomationProperties.SetName(WeatherActionStatusText, WeatherActionStatusText.Text);
-    }
-
-    private void ClearWeatherActionStatus()
-    {
-        _weatherActionStatusKey = null;
-        WeatherActionStatusText.Text = string.Empty;
-        WeatherActionStatusText.Visibility = Visibility.Collapsed;
-        AutomationProperties.SetName(WeatherActionStatusText, string.Empty);
-    }
-
     private void ApplyLocalizedPresentation()
     {
-        SetWeatherKeyPresence(_weatherKeyConfigured);
         SetSaveWeatherKeyAction(_weatherKeyConfigured
             ? "WorldClock.Options.Weather.KeyAction.Change"
             : "WorldClock.Options.Weather.KeyAction.Set");

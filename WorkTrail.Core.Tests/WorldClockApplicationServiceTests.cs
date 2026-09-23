@@ -176,9 +176,9 @@ public sealed class WorldClockApplicationServiceTests
         Assert.Empty(writes);
     }
 
-    /// <summary>Ensures a recognized key is retained even when the provider reports a temporary quota limit.</summary>
+    /// <summary>A quota response cannot verify a candidate or replace a previously working key.</summary>
     [Fact]
-    public async Task SetWeatherKeyAsync_SavesARecognizedRateLimitedKeyWithExplicitFeedbackCode()
+    public async Task SetWeatherKeyAsync_DoesNotStoreAnUnverifiedRateLimitedKey()
     {
         var writes = new List<(string Name, string Secret)>();
         using var service = CreateService(
@@ -188,9 +188,9 @@ public sealed class WorldClockApplicationServiceTests
 
         var result = await service.SetWeatherKeyAsync(new string('c', 32), CancellationToken.None);
 
-        Assert.True(result.Succeeded);
-        Assert.Equal("world_clocks.weather.key.stored_rate_limited", result.Code);
-        Assert.Single(writes);
+        Assert.False(result.Succeeded);
+        Assert.Equal("world_clocks.weather.key.rate_limited", result.Code);
+        Assert.Empty(writes);
     }
 
     private static WorldClockApplicationService CreateService(

@@ -206,8 +206,13 @@ internal sealed class WorldClockApplicationService : IDisposable
                     "WorldClockWeatherKeyValidationUnavailable");
             }
 
-            if (validation is not (WorldClockWeatherApiKeyValidation.Accepted
-                or WorldClockWeatherApiKeyValidation.RateLimited))
+            if (validation == WorldClockWeatherApiKeyValidation.RateLimited)
+            {
+                return OperationResult<string>.Failure(
+                    "world_clocks.weather.key.rate_limited", "ProviderSetup.Error.Limits");
+            }
+
+            if (validation != WorldClockWeatherApiKeyValidation.Accepted)
             {
                 throw new InvalidDataException($"Unsupported weather-key validation result '{validation}'.");
             }
@@ -217,9 +222,7 @@ internal sealed class WorldClockApplicationService : IDisposable
             _setApiKey(OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable, secretValue);
             _worldClocks.InvalidateCurrentWeatherConfiguration();
             return OperationResult<string>.Success(
-                validation == WorldClockWeatherApiKeyValidation.RateLimited
-                    ? "world_clocks.weather.key.stored_rate_limited"
-                    : "world_clocks.weather.key.stored",
+                "world_clocks.weather.key.stored",
                 "WorldClockWeatherKeyStored",
                 OpenWeatherCurrentProvider.ApiKeyEnvironmentVariable);
         }

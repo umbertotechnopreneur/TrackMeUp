@@ -99,6 +99,11 @@ public sealed class AiEnablementGuardTests
 
             Assert.True(readyStatus.Value?.HasKey);
             Assert.True(readyStatus.Value?.CanEnable);
+            var unverifiedProfile = await application.ApplyQuickSetupProfileAsync(
+                new QuickSetupProfileRequest(QuickSetupProfileIds.Assisted, false), CancellationToken.None);
+            Assert.False(unverifiedProfile.Succeeded);
+            Assert.Equal("quick_setup.ai.verification_required", unverifiedProfile.Code);
+            Assert.False(store.LoadSettings().QuickSetupCompleted);
             Assert.True(enabled.Succeeded);
             Assert.True(enabled.Value?.Enabled);
             Assert.True(store.LoadSettings().OpenAiEnabled);

@@ -888,7 +888,7 @@ public interface IWorkTrailApplication : IAsyncDisposable
     /// <summary>Updates non-secret AI settings.</summary>
     Task<OperationResult<AppSettings>> ConfigureAiAsync(SettingsPatch patch, CancellationToken cancellationToken);
 
-    /// <summary>Stores an API key only in the specified user environment variable.</summary>
+    /// <summary>Verifies a candidate with a small billable provider request, then stores it only in the specified user environment variable.</summary>
     Task<OperationResult<string>> SetAiKeyAsync(string keyVariable, string secret, CancellationToken cancellationToken);
 
     /// <summary>Runs an immediate, policy-enforced AI analysis.</summary>

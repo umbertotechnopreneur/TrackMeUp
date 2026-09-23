@@ -35,6 +35,8 @@ public sealed class WinUiSurfaceContractTests
         var options = XDocument.Load(RepositoryFile("WorkTrail", "Controls", "OptionsControl.xaml"));
         var about = XDocument.Load(RepositoryFile("WorkTrail", "AboutWindow.xaml"));
         var aboutSource = File.ReadAllText(RepositoryFile("WorkTrail", "AboutWindow.xaml.cs"));
+        var applicationSource = File.ReadAllText(RepositoryFile("WorkTrail.Core", "Application", "WorkTrailApplication.cs"));
+        var productSource = File.ReadAllText(RepositoryFile("WorkTrail.Core", "Application", "WorkTrailApplication.Product.cs"));
         var licenses = XDocument.Load(RepositoryFile("WorkTrail", "ThirdPartyLicensesWindow.xaml"));
         var licensesSource = File.ReadAllText(RepositoryFile("WorkTrail", "ThirdPartyLicensesWindow.xaml.cs"));
 
@@ -56,7 +58,10 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(about.Descendants(), element => HasName(element, "ShareLogButton"));
         Assert.Contains(about.Descendants(), element => HasName(element, "IssuesButton"));
         Assert.Contains(about.Descendants(), element => HasName(element, "LicensesButton"));
-        Assert.Contains(about.Descendants(), element => HasName(element, "RepositoryFooterButton"));
+        Assert.Contains(about.Descendants(), element => HasName(element, "FooterDetailsPanel") && element.Attribute("Grid.Column") is null);
+        Assert.Contains(about.Descendants(), element => HasName(element, "RepositoryButton") && element.Attribute("Tag")?.Value == "About.Repository");
+        Assert.Contains(about.Descendants(), element => HasName(element, "PrivacyButton") && element.Attribute("Tag")?.Value == "About.Privacy");
+        Assert.Contains(about.Descendants(), element => HasName(element, "TermsButton") && element.Attribute("Tag")?.Value == "About.Terms");
         Assert.Contains(about.Descendants(), element => element.Attribute("Tag")?.Value == "About.FavoriteMessage");
         Assert.Contains(licenses.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Contains(licenses.Descendants(), element => element.Name.LocalName == "ScrollViewer");
@@ -77,6 +82,12 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains("_application.OpenApplicationLogFolderAsync", aboutSource, StringComparison.Ordinal);
         Assert.Contains("_application.ShareApplicationLogAsync", aboutSource, StringComparison.Ordinal);
         Assert.Contains("_application.OpenProductLinkAsync", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("RunProductLinkActionAsync(\"privacy\")", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("RunProductLinkActionAsync(\"terms\")", aboutSource, StringComparison.Ordinal);
+        Assert.Contains("https://umbertogiacobbi.biz/privacy/", applicationSource, StringComparison.Ordinal);
+        Assert.Contains("https://umbertogiacobbi.biz/terms/", applicationSource, StringComparison.Ordinal);
+        Assert.Contains("\"privacy\" => ProductPrivacyUrl", productSource, StringComparison.Ordinal);
+        Assert.Contains("\"terms\" => ProductTermsUrl", productSource, StringComparison.Ordinal);
         Assert.Contains("ThirdPartyLicensesWindow", aboutSource, StringComparison.Ordinal);
         Assert.Contains("ownerAppWindow.Id", aboutSource, StringComparison.Ordinal);
         Assert.Contains("WindowInteropService.SetOwner(windowHandle, ownerHandle);", aboutSource, StringComparison.Ordinal);
@@ -1358,7 +1369,7 @@ public sealed class WinUiSurfaceContractTests
         Assert.Contains(quickSetup.Descendants(), element => element.Name.LocalName == "DesktopAcrylicBackdrop");
         Assert.Equal("Transparent", quickSetup.Descendants().Single(element => HasName(element, "RootGrid")).Attribute("Background")?.Value);
         Assert.Equal("Stretch", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("HorizontalContentAlignment")?.Value);
-        Assert.Equal("Hidden", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("VerticalScrollBarVisibility")?.Value);
+        Assert.Equal("Auto", quickSetup.Descendants().Single(element => element.Name.LocalName == "ScrollViewer").Attribute("VerticalScrollBarVisibility")?.Value);
         Assert.Equal(4, quickSetup.Descendants().Count(element => element.Name.LocalName == "Viewbox"));
         Assert.Contains(quickSetup.Descendants(), element =>
             HasName(element, "TitleBarBrandMark")
@@ -1373,8 +1384,8 @@ public sealed class WinUiSurfaceContractTests
         Assert.DoesNotContain(quickSetup.Descendants(), element => element.Name.LocalName is "LinearGradientBrush" or "RadialGradientBrush");
         Assert.DoesNotContain("SystemControlHighlightAccentBrush", quickSetupMarkup, StringComparison.Ordinal);
         Assert.Contains("ApplyQuickSetupProfileAsync", quickSetupSource, StringComparison.Ordinal);
-        Assert.Contains("LogicalWindowWidth = 860", quickSetupSource, StringComparison.Ordinal);
-        Assert.Contains("LogicalWindowHeight = 650", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowWidth = 1000", quickSetupSource, StringComparison.Ordinal);
+        Assert.Contains("LogicalWindowHeight = 760", quickSetupSource, StringComparison.Ordinal);
         Assert.Contains("ApplyLanguage();", quickSetupSource, StringComparison.Ordinal);
         Assert.Equal(
             1,

@@ -189,7 +189,7 @@ internal sealed partial class AiConnectionTestDialogWindow : Window
         ResultIcon.Glyph = success ? "\uE73E" : "\uEA39";
         ResultIcon.Foreground = new SolidColorBrush(success ? Colors.ForestGreen : Colors.IndianRed);
         ResultIcon.Visibility = Visibility.Visible;
-        CloseButton.Content = T("AiConnectionTest.Close");
+        CloseButton.Content = T(success ? "Dialog.Ok" : "AiConnectionTest.Close");
     }
 
     private async Task AppendTerminalAsync(string text, CancellationToken cancellationToken)

@@ -52,14 +52,13 @@ jobs:
           "value=$version" >> $env:GITHUB_OUTPUT
 
   package:
-    name: ${{ matrix.distribution }} (${{ matrix.platform }})
+    name: portable (${{ matrix.platform }})
     needs: version
     runs-on: windows-latest
     strategy:
       fail-fast: false
       matrix:
         platform: [x64, ARM64]
-        distribution: [msix, portable]
     env:
       RELEASE_VERSION: ${{ needs.version.outputs.value }}
       RELEASE_PLATFORM: ${{ matrix.platform }}
@@ -72,35 +71,21 @@ jobs:
         with:
           global-json-file: global.json
 
-      - name: Test release safeguards
-        if: matrix.platform == 'x64' && matrix.distribution == 'msix'
+      - name: Test portable release safeguards
+        if: matrix.platform == 'x64'
         run: |
-          ./scripts/Test-ReleasePackaging.ps1
           ./scripts/Test-PortableReleasePackaging.ps1
 
-      - name: Build unsigned MSIX
-        if: matrix.distribution == 'msix'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          ./scripts/WorkTrail.ps1 -Action PackageMsix -Platform $env:RELEASE_PLATFORM -ReleaseVersion $env:RELEASE_VERSION -Unsigned -PackageOutputPath "./artifacts/release-packages/$env:RELEASE_PLATFORM"
-
-      - name: Bundle matching runtime dependencies and checksums
-        if: matrix.distribution == 'msix'
-        run: |
-          $ErrorActionPreference = 'Stop'
-          ./scripts/New-ReleaseArchive.ps1 -PackageDirectory "./artifacts/release-packages/$env:RELEASE_PLATFORM" -Version $env:RELEASE_VERSION -Platform $env:RELEASE_PLATFORM
-
       - name: Publish portable application with bundled runtimes
-        if: matrix.distribution == 'portable'
         run: |
           $ErrorActionPreference = 'Stop'
           ./scripts/WorkTrail.ps1 -Action PublishUnpackaged -Platform $env:RELEASE_PLATFORM -ReleaseVersion $env:RELEASE_VERSION -PublishOutputPath "./artifacts/portable-publish/$env:RELEASE_PLATFORM"
           ./scripts/New-PortableReleaseArchive.ps1 -PublishDirectory "./artifacts/portable-publish/$env:RELEASE_PLATFORM" -Version $env:RELEASE_VERSION -Platform $env:RELEASE_PLATFORM
 
-      - name: Upload unsigned release artifacts
+      - name: Upload portable release artifacts
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: WorkTrail-${{ needs.version.outputs.value }}-${{ matrix.platform }}-${{ matrix.distribution }}-unsigned
+          name: WorkTrail-${{ needs.version.outputs.value }}-${{ matrix.platform }}-portable-unsigned
           path: |
             artifacts/releases/${{ needs.version.outputs.value }}/${{ matrix.platform }}/**/*.zip
             artifacts/releases/${{ needs.version.outputs.value }}/${{ matrix.platform }}/**/*.zip.sha256
@@ -109,7 +94,7 @@ jobs:
           retention-days: 30
 
   draft:
-    name: Draft release (awaiting signing)
+    name: Draft portable release (awaiting review)
     if: github.event_name == 'push' && github.ref_type == 'tag'
     needs: [version, package]
     runs-on: windows-latest
@@ -126,7 +111,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Download both distributions and architectures
+      - name: Download both portable architectures
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
           pattern: WorkTrail-${{ needs.version.outputs.value }}-*-unsigned
@@ -138,17 +123,15 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $assets = @()
           foreach ($platform in @('x64', 'ARM64')) {
-            foreach ($suffix in @('unsigned', 'portable-unsigned')) {
-              $file = "WorkTrail-$env:RELEASE_VERSION-$platform-$suffix.zip"
-              $matches = @(Get-ChildItem -LiteralPath 'release-assets' -Recurse -File -Filter $file)
-              if ($matches.Count -ne 1) { throw "Missing or ambiguous release archive: $file" }
-              $path = $matches[0].FullName
-              $checksum = "$path.sha256"
-              $expected = (Get-Content -LiteralPath $checksum -Raw).Trim()
-              $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
-              if ($expected -cne "$actual  $file") { throw "Archive checksum mismatch: $file" }
-              $assets += @($path, $checksum)
-            }
+            $file = "WorkTrail-$env:RELEASE_VERSION-${platform}-portable-unsigned.zip"
+            $matches = @(Get-ChildItem -LiteralPath 'release-assets' -Recurse -File -Filter $file)
+            if ($matches.Count -ne 1) { throw "Missing or ambiguous release archive: $file" }
+            $path = $matches[0].FullName
+            $checksum = "$path.sha256"
+            $expected = (Get-Content -LiteralPath $checksum -Raw).Trim()
+            $actual = (Get-FileHash -LiteralPath $path -Algorithm SHA256).Hash
+            if ($expected -cne "$actual  $file") { throw "Archive checksum mismatch: $file" }
+            $assets += @($path, $checksum)
           }
           $existing = gh release list --limit 1000 --json tagName,isDraft | ConvertFrom-Json
           if ($LASTEXITCODE -ne 0) { throw 'Could not inspect existing releases.' }
@@ -156,17 +139,15 @@ jobs:
             throw 'A release already exists for this tag. Review it manually; existing assets are never replaced.'
           }
           @"
-          Preparation build for WorkTrail $env:RELEASE_VERSION (MSIX and portable ZIPs, x64 and ARM64).
+          Portable ZIP preparation build for WorkTrail $env:RELEASE_VERSION (x64 and ARM64).
 
-          **Unsigned preparation artifacts.** MSIX packages require signing before installation.
           Portable ZIPs can be extracted and run through WorkTrail.exe and include .NET and Windows App SDK.
           Application data remains in LocalAppData.
           On-device screenshot OCR requires the MSIX edition and is unavailable in the portable build.
-          MSIX ZIPs include the matching Microsoft-signed Windows App Runtime dependencies.
-          x64 packages include the official PawnIO installer for advanced sensors; installation requires Windows administrator consent.
           Every ZIP includes payload checksums and an adjacent archive checksum.
-          Application signing and clean-machine installation/portable-launch checks remain required before public publication.
+          Clean-machine portable-launch checks remain required before public publication.
+          Microsoft Store MSIX packages are built and signed locally, outside this workflow.
           This draft is created automatically; the workflow never publishes it.
           "@ | Set-Content -LiteralPath release-notes.md -Encoding utf8NoBOM
-          gh release create $env:RELEASE_TAG @assets --verify-tag --draft --title "WorkTrail $env:RELEASE_VERSION - awaiting signing" --notes-file release-notes.md
+          gh release create $env:RELEASE_TAG @assets --verify-tag --draft --title "WorkTrail $env:RELEASE_VERSION - portable ZIPs" --notes-file release-notes.md
           if ($LASTEXITCODE -ne 0) { throw 'Draft release creation failed.' }
