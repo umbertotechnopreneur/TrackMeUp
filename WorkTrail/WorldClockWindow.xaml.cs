@@ -22,7 +22,7 @@ public sealed partial class WorldClockWindow : Window
 {
     private const int LogicalWindowWidth = 1120;
     private const int LogicalWindowHeight = 720;
-    private const int LogicalScreenMargin = 24;
+    private const int LogicalScreenMargin = 0;
     private readonly IWorkTrailApplication _application;
     private readonly MicaDialogService _dialogs;
     private readonly AppWindow _appWindow;
