@@ -191,7 +191,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied += ApplyWorldClockWindowSettings;
             _window.SettingsApplied += ApplyTitleBarSettings;
             _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
+#if DEBUG
             _window.DebugOobeResetRequested += MainWindow_DebugOobeResetRequested;
+#endif
             _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
             _window.SensorsRequested += MainWindow_SensorsRequested;
             _window.SearchRequested += MainWindow_SearchRequested;
@@ -378,6 +380,7 @@ public partial class App : Microsoft.UI.Xaml.Application
         ShowQuickSetupWindow(application, result.Value, firstRun: false);
     }
 
+#if DEBUG
     private async void MainWindow_DebugOobeResetRequested(object? sender, EventArgs eventArgs)
     {
         var application = StartOrConnectRuntime();
@@ -400,6 +403,7 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         ShowQuickSetupWindow(application, result.Value, firstRun: true);
     }
+#endif
 
     private void ShowQuickSetupWindow(IWorkTrailApplication application, AppSettings settings, bool firstRun)
     {
@@ -926,7 +930,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied -= ApplyWorldClockWindowSettings;
             _window.SettingsApplied -= ApplyTitleBarSettings;
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
+#if DEBUG
             _window.DebugOobeResetRequested -= MainWindow_DebugOobeResetRequested;
+#endif
             _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
             _window.SensorsRequested -= MainWindow_SensorsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
