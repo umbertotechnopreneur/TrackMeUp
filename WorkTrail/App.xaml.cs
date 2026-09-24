@@ -191,6 +191,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied += ApplyWorldClockWindowSettings;
             _window.SettingsApplied += ApplyTitleBarSettings;
             _window.QuickSetupRequested += MainWindow_QuickSetupRequested;
+#if DEBUG
+            _window.DebugOobeResetRequested += MainWindow_DebugOobeResetRequested;
+#endif
             _window.WorldClocksRequested += MainWindow_WorldClocksRequested;
             _window.SensorsRequested += MainWindow_SensorsRequested;
             _window.SearchRequested += MainWindow_SearchRequested;
@@ -376,6 +379,31 @@ public partial class App : Microsoft.UI.Xaml.Application
 
         ShowQuickSetupWindow(application, result.Value, firstRun: false);
     }
+
+#if DEBUG
+    private async void MainWindow_DebugOobeResetRequested(object? sender, EventArgs eventArgs)
+    {
+        var application = StartOrConnectRuntime();
+        var result = await application.GetSettingsAsync(CancellationToken.None);
+        if (!result.Succeeded || result.Value is null)
+        {
+            if (_window is not null)
+            {
+                var strings = new LocalizationService("system");
+                await _dialogs.ShowInformativeAsync(
+                    _window,
+                    DialogRequest.Informative(
+                        strings.Translate("QuickSetup.Unavailable.Title"),
+                        strings.Translate("QuickSetup.Unavailable.Message"),
+                        strings.Translate("Dialog.Ok")));
+            }
+
+            return;
+        }
+
+        ShowQuickSetupWindow(application, result.Value, firstRun: true);
+    }
+#endif
 
     private void ShowQuickSetupWindow(IWorkTrailApplication application, AppSettings settings, bool firstRun)
     {
@@ -930,6 +958,9 @@ public partial class App : Microsoft.UI.Xaml.Application
             _window.SettingsApplied -= ApplyWorldClockWindowSettings;
             _window.SettingsApplied -= ApplyTitleBarSettings;
             _window.QuickSetupRequested -= MainWindow_QuickSetupRequested;
+#if DEBUG
+            _window.DebugOobeResetRequested -= MainWindow_DebugOobeResetRequested;
+#endif
             _window.WorldClocksRequested -= MainWindow_WorldClocksRequested;
             _window.SensorsRequested -= MainWindow_SensorsRequested;
             _window.SearchRequested -= MainWindow_SearchRequested;
