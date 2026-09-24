@@ -1,4 +1,5 @@
 {
+  "Window.Close": "关闭窗口",
   "Archive.Progress.PreparingDatabase": "正在准备数据库…",
   "Archive.Progress.ScanningScreenshots": "正在收集截图…",
   "Archive.Progress.WritingArchive": "正在写入归档…",

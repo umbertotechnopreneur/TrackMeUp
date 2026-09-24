@@ -544,6 +544,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             _worldClockWindow.ProjectionChanged += WorldClockWindow_ProjectionChanged;
             _worldClockWindow.SettingsSaved += ApplyAstronomyWindowSettings;
             _worldClockWindow.Closed += WorldClockWindow_Closed;
+            AttachAstronomyContextMenu(_worldClockWindow);
             _worldClockWindow.Activate();
         }
         catch (Exception exception)
@@ -623,6 +624,26 @@ public partial class App : Microsoft.UI.Xaml.Application
 
     private async void WorldClockWindow_CelestialWindowRequested(string key) => await ShowCelestialWindowAsync(key);
 
+    private void AttachAstronomyContextMenu(Window window)
+    {
+        window.Content.ContextFlyout = AstronomyWindowMenu.Create(
+            () => new LocalizationService(_uiLanguage),
+            OpenAstronomyWindowFromMenu,
+            window.Close);
+    }
+
+    private async void OpenAstronomyWindowFromMenu(string key)
+    {
+        if (key == WindowStateKeys.WorldMap)
+        {
+            await ShowAstronomyWindowAsync(isLunarPhase: false);
+        }
+        else
+        {
+            await ShowCelestialWindowAsync(key);
+        }
+    }
+
     private async Task ShowCelestialWindowAsync(string key)
     {
         if (!_celestialWindowsOpening.Add(key)) return;
@@ -642,6 +663,11 @@ public partial class App : Microsoft.UI.Xaml.Application
                 throw new InvalidOperationException($"Celestial window settings are unavailable ({settings.Code}).");
 
             created = new CelestialWindow(application, _dialogs, settings.Value, key);
+            if (key is WindowStateKeys.AstronomyAgenda or WindowStateKeys.CelestialMap)
+            {
+                AttachAstronomyContextMenu(created);
+            }
+
             _celestialWindows.Add(key, created);
             created.Closed += (sender, _) =>
             {
@@ -702,6 +728,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 _lunarPhaseWindow = new LunarPhaseWindow(application, _dialogs, settings.Value);
                 createdWindow = _lunarPhaseWindow;
+                AttachAstronomyContextMenu(_lunarPhaseWindow);
                 _lunarPhaseWindow.Closed += (sender, _) =>
                 {
                     if (ReferenceEquals(_lunarPhaseWindow, sender)) _lunarPhaseWindow = null;
@@ -717,6 +744,7 @@ public partial class App : Microsoft.UI.Xaml.Application
             {
                 _worldMapWindow = new WorldMapWindow(application, _dialogs, settings.Value);
                 createdWindow = _worldMapWindow;
+                AttachAstronomyContextMenu(_worldMapWindow);
                 _worldMapWindow.Closed += (sender, _) =>
                 {
                     if (ReferenceEquals(_worldMapWindow, sender)) _worldMapWindow = null;

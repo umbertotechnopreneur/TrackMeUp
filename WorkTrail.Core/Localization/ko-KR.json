@@ -1,4 +1,5 @@
 {
+  "Window.Close": "창 닫기",
   "Archive.Progress.PreparingDatabase": "데이터베이스 준비 중…",
   "Archive.Progress.ScanningScreenshots": "스크린샷 수집 중…",
   "Archive.Progress.WritingArchive": "아카이브 작성 중…",

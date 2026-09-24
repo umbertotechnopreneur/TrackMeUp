@@ -1,4 +1,5 @@
 {
+  "Window.Close": "Fechar a janela",
   "Archive.Progress.PreparingDatabase": "A preparar a base de dados…",
   "Archive.Progress.ScanningScreenshots": "A recolher capturas de ecrã…",
   "Archive.Progress.WritingArchive": "A escrever o arquivo…",
