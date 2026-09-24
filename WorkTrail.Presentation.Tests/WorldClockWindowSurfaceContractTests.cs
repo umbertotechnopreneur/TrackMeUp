@@ -341,27 +341,32 @@ public sealed class WorldClockWindowSurfaceContractTests
         });
     }
 
-    /// <summary>Verifies safe key masking and explicit inline feedback for every provider-validation outcome.</summary>
+    /// <summary>Verifies safe key masking, gated continuation, and explicit provider-validation feedback.</summary>
     [Fact]
     public void WeatherKeyConfiguration_UsesSafeMaskAndLocalizedValidationFeedback()
     {
         var options = XDocument.Load(RepositoryFile("WorkTrail", "Controls", "ProviderKeySetupControl.xaml"));
         var source = File.ReadAllText(RepositoryFile("WorkTrail", "Controls", "ProviderKeySetupControl.xaml.cs"));
         var keyBox = options.Descendants().Single(element => HasName(element, "KeyBox"));
+        var continueButton = options.Descendants().Single(element => HasName(element, "ContinueButton"));
         var catalogs = Directory.GetFiles(RepositoryFile("WorkTrail.Core", "Localization"), "*.json");
         string[] feedbackKeys =
         [
             "ProviderSetup.NotVerified", "ProviderSetup.Verifying", "ProviderSetup.Success",
             "ProviderSetup.Error.Key", "ProviderSetup.Weather.Rejected", "ProviderSetup.Error.Limits",
-            "ProviderSetup.Error.Unavailable", "ProviderSetup.Weather.Activation", "ProviderSetup.Ai.Cost"
+            "ProviderSetup.Error.Unavailable", "ProviderSetup.Weather.Activation", "ProviderSetup.Ai.Cost",
+            "ProviderSetup.Paste", "ProviderSetup.Continue"
         ];
         Assert.Equal("PasswordBox", keyBox.Name.LocalName);
         Assert.Equal("Hidden", keyBox.Attribute("PasswordRevealMode")?.Value);
         Assert.Null(keyBox.Attribute("Password"));
+        Assert.Equal("False", continueButton.Attribute("IsEnabled")?.Value);
         Assert.Contains("KeyBox.Password = string.Empty;", source, StringComparison.Ordinal);
         Assert.Contains("SetWorldClockWeatherKeyAsync(secret", source, StringComparison.Ordinal);
         Assert.Contains("world_clocks.weather.key.rejected", source, StringComparison.Ordinal);
-        Assert.Contains("_verified ? \"Dialog.Ok\" : \"About.Close\"", source, StringComparison.Ordinal);
+        Assert.Contains("ContinueButton.IsEnabled = !_busy && _verified;", source, StringComparison.Ordinal);
+        Assert.Contains("CostBar.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
+        Assert.Contains("ResultBar.Visibility = Visibility.Collapsed;", source, StringComparison.Ordinal);
         Assert.DoesNotContain("Environment.", source, StringComparison.Ordinal);
         Assert.DoesNotContain("HttpClient", source, StringComparison.Ordinal);
         Assert.All(catalogs, catalog =>
