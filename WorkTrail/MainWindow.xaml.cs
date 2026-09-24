@@ -2291,23 +2291,13 @@ public sealed partial class MainWindow : Window
     /// <summary>Waits for initial application state before restoring dependent work surfaces.</summary>
     internal Task WaitForWorkspaceReadyAsync() => _workspaceReady.Task;
 
-    /// <summary>Restores passive tools after their main-window owner is ready.</summary>
+    /// <summary>Restores workspace tools while leaving informational windows closed.</summary>
     internal async Task RestoreToolWindowsAsync(IReadOnlyList<string> windowKeys)
     {
         await WaitForWorkspaceReadyAsync();
         if (windowKeys.Contains(WindowStateKeys.Schedule))
         {
             await OpenScheduleWindowAsync();
-        }
-
-        if (windowKeys.Contains(WindowStateKeys.About))
-        {
-            ShowAboutWindow();
-        }
-
-        if (windowKeys.Contains(WindowStateKeys.Licenses))
-        {
-            _aboutWindow!.ShowLicenses();
         }
     }
 

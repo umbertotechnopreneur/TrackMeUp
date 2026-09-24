@@ -686,13 +686,15 @@ public sealed class WorldClockWindowSurfaceContractTests
         var windowSource = File.ReadAllText(RepositoryFile("WorkTrail", "WorldClockWindow.xaml.cs"));
         var detachedSource = File.ReadAllText(RepositoryFile("WorkTrail", "WorldMapWindow.xaml.cs"));
         var mapSource = File.ReadAllText(RepositoryFile("WorkTrail", "Controls", "WorldDayNightMapControl.xaml.cs"));
+        var menuSource = File.ReadAllText(RepositoryFile("WorkTrail", "Controls", "AstronomyWindowMenu.cs"));
         var contracts = File.ReadAllText(RepositoryFile("WorkTrail.Core", "Application", "Contracts.cs"));
         var service = File.ReadAllText(RepositoryFile("WorkTrail.Core", "Infrastructure", "Services", "WorldClockService.cs"));
         var openButton = window.Descendants().Single(element => HasName(element, "WorldMapButton"));
         var mapControl = detachedWindow.Descendants().Single(element => HasName(element, "WorldMapControl"));
 
         Assert.Equal("WorldClock.Map.Open", openButton.Attribute("Tag")?.Value);
-        Assert.Equal("WorldMapButton_Click", window.Descendants().Single(element => HasName(element, "WorldMapMenuItem")).Attribute("Click")?.Value);
+        Assert.Contains("WorldMapButton.Flyout = AstronomyWindowMenu.Create", windowSource, StringComparison.Ordinal);
+        Assert.Contains("openWindow(WindowStateKeys.WorldMap)", menuSource, StringComparison.Ordinal);
         Assert.Equal("True", openButton.Attribute("IsTabStop")?.Value);
         Assert.Equal("True", openButton.Attribute("AllowFocusOnInteraction")?.Value);
         Assert.Equal(AttributeValue(openButton, "AutomationProperties.Name"), AttributeValue(openButton, "ToolTipService.ToolTip"));
