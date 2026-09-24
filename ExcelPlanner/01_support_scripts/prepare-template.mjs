@@ -7,7 +7,7 @@ import {FileBlob, SpreadsheetFile} from '@oai/artifact-tool';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const output=path.join(root,'artifacts/template-cleanup');
 await fs.mkdir(output,{recursive:true});
-const wb=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'Planner_Disponibilita_A4.xlsx')));
+const wb=await SpreadsheetFile.importXlsx(await FileBlob.load(path.join(root,'Planner_Availability_A4.xlsx')));
 const sheet=wb.worksheets.getItem('Parametri');
 const before=await wb.render({sheetName:'Parametri',range:'A24:M27',scale:1,format:'png'});
 await fs.writeFile(path.join(output,'before.png'),new Uint8Array(await before.arrayBuffer()));

@@ -20,7 +20,7 @@ verifiche/
 dati_preparati/
 fonti/
 **/*.xlsx
-!/Planner_Disponibilita_A4.xlsx
+!/Planner_Availability_A4.xlsx
 **/*-report.json
 **/*-verification.json
 **/verification.json
@@ -30,8 +30,8 @@ fonti/
 **/symbols-patch.json
 **/formula-patch.json
 **/artifact-diagnostics.txt
-**/weather-agent/Citta.csv
-**/weather-agent/Meteo.csv
-**/saints-agent/Santi.csv
+**/weather-agent/Cities.csv
+**/weather-agent/Weather.csv
+**/saints-agent/Saints.csv
 **/saints-agent/manifest.json
 **/saints-agent/merge-report.json

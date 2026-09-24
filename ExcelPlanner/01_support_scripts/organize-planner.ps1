@@ -7,7 +7,7 @@ $planning = (Resolve-Path -LiteralPath $PlanningRoot).Path.TrimEnd('\')
 $target = Join-Path $planning 'Excel prototypes'
 $source = Join-Path $planning 'Planner_disponibilita'
 $support = Join-Path $target '01_support_scripts'
-$archive = 'Planner_disponibilita_sorgenti_2026-09-24'
+$archive = 'planner_authoring_sources_2026-09-24'
 function Assert-InPlanning([string]$Path) {
     $full = [IO.Path]::GetFullPath($Path)
     if (-not $full.StartsWith($planning + '\', [StringComparison]::OrdinalIgnoreCase)) {
@@ -16,11 +16,11 @@ function Assert-InPlanning([string]$Path) {
     return $full
 }
 $moves = @(
-    @{From=(Join-Path $source 'Planner_Disponibilita_A4.xlsx'); To=(Join-Path $target 'Planner_Disponibilita_A4.xlsx')},
+    @{From=(Join-Path $source 'Planner_Availability_A4.xlsx'); To=(Join-Path $target 'Planner_Availability_A4.xlsx')},
     @{From=(Join-Path $source 'Calendar data'); To=(Join-Path $target 'Calendar data')},
-    @{From=(Join-Path $source 'LEGGIMI.md'); To=(Join-Path $support 'LEGGIMI.md')},
+    @{From=(Join-Path $source 'GETTING_STARTED.md'); To=(Join-Path $support 'GETTING_STARTED.md')},
     @{From=(Join-Path $source 'Excel_Utility_Implementation_Plan.md'); To=(Join-Path $support 'Excel_Utility_Implementation_Plan.md')},
-    @{From=(Join-Path $source 'Planner_Disponibilita_A4.pdf'); To=(Join-Path $support 'Planner_Disponibilita_A4.pdf')},
+    @{From=(Join-Path $source 'Planner_Availability_A4.pdf'); To=(Join-Path $support 'Planner_Availability_A4.pdf')},
     @{From=(Join-Path $target $archive); To=(Join-Path $support $archive)},
     @{From=(Join-Path $target 'TRUE ORIGINAL.xlsx'); To=(Join-Path $support 'Originali\TRUE ORIGINAL.xlsx')},
     @{From=(Join-Path $target 'Planner_Riunioni_e_Giornata_2025-10-20.xlsx'); To=(Join-Path $support 'Originali\Planner_Riunioni_e_Giornata_2025-10-20.xlsx')}
@@ -40,7 +40,7 @@ foreach ($move in $moves) {
         if ($inventory.Count -gt 150) { throw 'Unexpectedly large inventory; review scope before proceeding.' }
     }
 }
-$guideTarget = Assert-InPlanning (Join-Path $support 'Guida_dati.md')
+$guideTarget = Assert-InPlanning (Join-Path $support 'Data_Guide.md')
 if (Test-Path -LiteralPath $guideTarget) { throw "Destination already exists: $guideTarget" }
 $lock = [IO.File]::Open($moves[0].From, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)
 $lock.Dispose()
@@ -56,7 +56,7 @@ foreach ($move in $moves) {
 foreach ($entry in $inventory) {
     if ((Get-FileHash -LiteralPath $entry.To -Algorithm SHA256).Hash -ne $entry.SHA256) { throw "Hash mismatch: $($entry.To)" }
 }
-$guideSource = Assert-InPlanning (Join-Path $target 'Calendar data\LEGGIMI.md')
+$guideSource = Assert-InPlanning (Join-Path $target 'Calendar data\GETTING_STARTED.md')
 Move-Item -LiteralPath $guideSource -Destination $guideTarget
 foreach ($entry in $inventory) { if ($entry.To -eq $guideSource) { $entry.To = $guideTarget } }
 

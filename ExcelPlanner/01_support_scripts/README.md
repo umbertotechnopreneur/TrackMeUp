@@ -2,9 +2,9 @@
 
 The current workbook is the template in the parent folder. These files preserve its authoring history, not a newly verified build pipeline.
 
-- `Planner_disponibilita_sorgenti_2026-09-24/`: original builder, UTC/DST preparation and WorldClocks import. The base builder writes to ignored `artifacts/base-planner/`.
-- `calendari-2026-09-24/`: national calendars, saint sources, weather fetcher and Power Query source, cover builder and one-time migration.
-- `simboli-2026-09-24/`: Unicode authoring and the original narrow-edit verification scripts.
+- `planner_authoring_sources_2026-09-24/`: original builder, UTC/DST preparation and WorldClocks import. The base builder writes to ignored `artifacts/base-planner/`.
+- `calendars-2026-09-24/`: national calendars, saint sources, weather fetcher and Power Query source, cover builder and one-time migration.
+- `unicode_symbols-2026-09-24/`: Unicode authoring and the original narrow-edit verification scripts.
 - Root relocation/archive utilities are historical; provide explicit locations where requested.
 
 One-time migrations expect their earlier workbook version and generated intermediate files. Reports, backups and QA output stay outside Git. The current template already includes the calendar, exception, cover, weather and Unicode revisions.
@@ -20,9 +20,9 @@ Verification scripts were preserved but not rerun for this import. Review parame
 ## Data and licenses
 
 - Cities: derived from the repository's read-only `WorkTrail/Assets/WorldClocks/world-clocks.sqlite3` catalog, based on GeoNames (CC BY 4.0). Keep its existing attribution.
-- Holidays: python-holidays 0.105. Source URLs and generation metadata remain in `calendari-2026-09-24/holiday-manifest.json`; library notices are in `licenses/`.
-- Saints: original source data, Apache 2.0 license and provenance remain in `calendari-2026-09-24/saints-agent/`. Original public-fact examples retain their source URLs.
+- Holidays: python-holidays 0.105. Source URLs and generation metadata remain in `calendars-2026-09-24/holiday-manifest.json`; library notices are in `licenses/`.
+- Saints: original source data, Apache 2.0 license and provenance remain in `calendars-2026-09-24/saints-agent/`. Original public-fact examples retain their source URLs.
 - Moon: USNO phase data, with source URLs in the CSV and original input JSON.
-- Weather: OpenWeather observations are a dated sample; source and timestamps are in `Meteo.csv`. No API key is included.
+- Weather: OpenWeather observations are a dated sample; source and timestamps are in `Weather.csv`. No API key is included.
 
-See [Guida_dati.md](Guida_dati.md) for fields, priorities and limits. The private mini-tool/IPC proposal remains in Obsidian.
+See [Data_Guide.md](Data_Guide.md) for fields, priorities and limits. The private mini-tool/IPC proposal remains in Obsidian.

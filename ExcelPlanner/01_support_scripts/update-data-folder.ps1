@@ -2,9 +2,9 @@ param([switch]$Apply)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path -Parent $PSScriptRoot
-$workbookPath = Join-Path $root 'Planner_Disponibilita_A4.xlsx'
+$workbookPath = Join-Path $root 'Planner_Availability_A4.xlsx'
 $dataPath = Join-Path $root 'Calendar data'
-$csvNames = @('Citta.csv', 'Periodi_DST.csv', 'Calendari.csv', 'Santi.csv', 'Fasi_lunari.csv')
+$csvNames = @('Cities.csv', 'DST_periods.csv', 'Calendars.csv', 'Saints.csv', 'Moon_phases.csv')
 foreach ($name in $csvNames) { if (-not (Test-Path -LiteralPath (Join-Path $dataPath $name) -PathType Leaf)) { throw "Missing CSV: $name" } }
 if (-not $Apply) { Write-Output "Would update DataFolder to $dataPath and refresh five existing queries."; return }
 $lock = [IO.File]::Open($workbookPath, [IO.FileMode]::Open, [IO.FileAccess]::Read, [IO.FileShare]::None)

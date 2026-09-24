@@ -2,7 +2,7 @@
 param([switch]$Apply)
 $ErrorActionPreference='Stop'
 $root=Split-Path -Parent $PSScriptRoot
-$path=Join-Path $root 'Planner_Disponibilita_A4.xlsx'
+$path=Join-Path $root 'Planner_Availability_A4.xlsx'
 $patch=Get-Content -LiteralPath (Join-Path $root 'artifacts/template-cleanup/clear-fields.json') -Raw | ConvertFrom-Json
 if($patch.Count -ne 2 -or @($patch | Where-Object {$_.sheet -ne 'Parametri' -or $_.address -notin @('B25','B32') -or $_.value}).Count){throw 'Unexpected privacy patch.'}
 $original=[IO.File]::ReadAllBytes($path)
