@@ -9,12 +9,6 @@ namespace WorkTrail.Services;
 /// <summary>Stores the embedded celestial calendar in normalized tables of the existing activity database.</summary>
 internal sealed partial class SqliteActivityStore
 {
-    private static readonly HashSet<string> CalendarSchemaObjects =
-    [
-        "calendar_dataset", "calendar_countries", "calendar_holidays", "ix_calendar_holidays_date",
-        "calendar_saints", "ix_calendar_saints_month_day"
-    ];
-
     private const string CalendarSchemaSql = """
         CREATE TABLE calendar_dataset (
             id INTEGER PRIMARY KEY CHECK (id = 1),
@@ -36,6 +30,7 @@ internal sealed partial class SqliteActivityStore
             name TEXT NOT NULL,
             kind TEXT NOT NULL CHECK (kind IN ('holiday', 'workday')),
             quality TEXT NOT NULL CHECK (quality IN ('rule_based', 'estimated', 'provisional')),
+            artwork_file_name TEXT NOT NULL,
             source_url TEXT NOT NULL,
             PRIMARY KEY (country_code, date, kind, name)
         );
@@ -49,24 +44,6 @@ internal sealed partial class SqliteActivityStore
         );
         CREATE INDEX ix_calendar_saints_month_day ON calendar_saints (month, day);
         """;
-
-    private static void MigrateCalendarSchema(SqliteConnection connection)
-    {
-        ValidatePriorSchema(connection);
-        var expectedPrevious = ExpectedApplicationSchemaObjects.Except(CalendarSchemaObjects).ToHashSet(StringComparer.Ordinal);
-        if (!ReadApplicationSchemaObjects(connection).SetEquals(expectedPrevious))
-        {
-            throw new InvalidOperationException("The version 10 activity database has unsupported schema objects.");
-        }
-
-        // Version 10 has no celestial calendar tables. Add them atomically without moving activity rows.
-        using var transaction = connection.BeginTransaction();
-        using var command = connection.CreateCommand();
-        command.Transaction = transaction;
-        command.CommandText = CalendarSchemaSql + $"PRAGMA user_version = {SchemaVersion};";
-        command.ExecuteNonQuery();
-        transaction.Commit();
-    }
 
     private static void ValidateCalendarSchema(SqliteConnection connection)
     {
@@ -125,13 +102,14 @@ internal sealed partial class SqliteActivityStore
             using var insert = connection.CreateCommand();
             insert.Transaction = transaction;
             insert.CommandText = "INSERT INTO calendar_holidays "
-                + "(country_code, date, name, kind, quality, source_url) "
-                + "VALUES ($country, $date, $name, $kind, $quality, $source);";
+                + "(country_code, date, name, kind, quality, artwork_file_name, source_url) "
+                + "VALUES ($country, $date, $name, $kind, $quality, $artwork, $source);";
             Add(insert, "$country", holiday.Country);
             Add(insert, "$date", holiday.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
             Add(insert, "$name", holiday.Name);
             Add(insert, "$kind", holiday.Kind);
             Add(insert, "$quality", holiday.Quality);
+            Add(insert, "$artwork", holiday.ArtworkFileName);
             Add(insert, "$source", holiday.SourceUrl);
             insert.ExecuteNonQuery();
         }
@@ -172,7 +150,7 @@ internal sealed partial class SqliteActivityStore
     {
         using var connection = OpenConnection();
         using var command = connection.CreateCommand();
-        command.CommandText = "SELECT date, country_code, name, kind, quality, source_url "
+        command.CommandText = "SELECT date, country_code, name, kind, quality, artwork_file_name, source_url "
             + "FROM calendar_holidays WHERE date BETWEEN $start AND $end ORDER BY date, country_code, kind, name;";
         Add(command, "$start", start.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
         Add(command, "$end", end.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture));
@@ -182,7 +160,8 @@ internal sealed partial class SqliteActivityStore
         {
             rows.Add(new CelestialCalendarHoliday(
                 DateOnly.ParseExact(reader.GetString(0), "yyyy-MM-dd", CultureInfo.InvariantCulture),
-                reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4), reader.GetString(5)));
+                reader.GetString(1), reader.GetString(2), reader.GetString(3), reader.GetString(4),
+                reader.GetString(5), reader.GetString(6)));
         }
 
         return rows;

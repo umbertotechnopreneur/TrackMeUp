@@ -9,7 +9,8 @@ namespace WorkTrail.Application;
 
 /// <summary>One source-backed national holiday or make-up workday in the bundled agenda catalog.</summary>
 internal sealed record CelestialCalendarHoliday(
-    DateOnly Date, string Country, string Name, string Kind, string Quality, string SourceUrl);
+    DateOnly Date, string Country, string Name, string Kind, string Quality,
+    string ArtworkFileName, string SourceUrl);
 
 /// <summary>One fixed-date Latin sanctoral entry with a stable artwork identifier.</summary>
 internal sealed record CelestialCalendarSaint(
@@ -50,7 +51,7 @@ internal static class CelestialCalendarCatalog
         var bytes = buffer.ToArray();
         var raw = JsonSerializer.Deserialize<RawDataset>(bytes, JsonOptions)
             ?? throw new InvalidDataException("The celestial calendar catalog is empty.");
-        if (raw.SchemaVersion != 1 || raw.HolidayLibrary != "holidays 0.105"
+        if (raw.SchemaVersion != 2 || raw.HolidayLibrary != "holidays 0.105"
             || raw.SaintsSource.Revision != "1bb2b7c503a701a9713b2f881795afe46044af3b"
             || raw.Countries.Count != CelestialCalendarCountries.All.Count || raw.Saints.Count != 211
             || raw.Holidays.Count == 0)
@@ -85,10 +86,11 @@ internal static class CelestialCalendarCatalog
             if (date < start || date > end || !validCodes.Contains(item.Country)
                 || item.Kind is not ("holiday" or "workday")
                 || item.Quality is not ("rule_based" or "estimated" or "provisional")
-                || string.IsNullOrWhiteSpace(item.Name) || !IsHttps(item.SourceUrl))
+                || string.IsNullOrWhiteSpace(item.Name) || !IsArtworkFileName(item.ArtworkFileName)
+                || !IsHttps(item.SourceUrl))
                 throw new InvalidDataException("Invalid celestial calendar holiday entry.");
             return new CelestialCalendarHoliday(date, item.Country, item.Name, item.Kind,
-                item.Quality, item.SourceUrl);
+                item.Quality, item.ArtworkFileName, item.SourceUrl);
         }).ToArray();
         if (holidays.Select(item => (item.Date, item.Country, item.Kind, item.Name)).Distinct().Count() != holidays.Length)
         {
@@ -122,6 +124,9 @@ internal static class CelestialCalendarCatalog
     private static bool IsHttps(string value) => Uri.TryCreate(value, UriKind.Absolute, out var uri)
         && uri.Scheme == Uri.UriSchemeHttps;
 
+    private static bool IsArtworkFileName(string value) => value.EndsWith(".png", StringComparison.Ordinal)
+        && value.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.');
+
     private sealed record RawDataset(
         int SchemaVersion, string CoverageStart, string CoverageEnd, string HolidayLibrary,
         string HolidayScope, RawSaintSource SaintsSource,
@@ -130,6 +135,8 @@ internal static class CelestialCalendarCatalog
 
     private sealed record RawSaintSource(string Source, string Revision, string Scope, int DatesCovered, int Entries);
     private sealed record RawCountry(string Code, string Name, string Scope, string SourceUrl);
-    private sealed record RawHoliday(string Date, string Country, string Name, string Kind, string Quality, string SourceUrl);
+    private sealed record RawHoliday(
+        string Date, string Country, string Name, string Kind, string Quality,
+        string ArtworkFileName, string SourceUrl);
     private sealed record RawSaint(int Month, int Day, string EventKey, string NameLatin, string SourceUrl);
 }

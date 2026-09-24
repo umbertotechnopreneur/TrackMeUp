@@ -62,7 +62,7 @@ public sealed record CelestialAgendaEvent(
     SpaceWeatherEventKind? SpaceWeatherKind = null, int? NoaaScale = null, double? KpIndex = null,
     string? SpaceWeatherAlertId = null,
     string? CalendarCountryCode = null, string? CalendarLabel = null, string? CalendarQuality = null,
-    string? CalendarEntryKey = null, DateOnly? CalendarDate = null)
+    string? CalendarArtworkFileName = null, string? CalendarEntryKey = null, DateOnly? CalendarDate = null)
 {
     /// <summary>Indicates that the projected instant falls in this event's half-open interval; point events are not ongoing.</summary>
     public bool IsAtReferenceInstant { get; init; }

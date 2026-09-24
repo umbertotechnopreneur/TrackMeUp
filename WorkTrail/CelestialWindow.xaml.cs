@@ -676,7 +676,9 @@ internal sealed partial class CelestialWindow : Window
             });
             details.Children.Add(new TextBlock
             {
-                Text = item.Kind is CelestialEventKind.Holiday or CelestialEventKind.Saint
+                Text = item.Kind == CelestialEventKind.Holiday
+                    ? item.StartLocal.ToString("t", _strings.Culture)
+                    : item.Kind == CelestialEventKind.Saint
                     ? T("Celestial.Agenda.AllDay")
                     : item.IsApproximate ? T("Celestial.Agenda.ApproximatePeak") : item.EndLocal is { } end
                     ? $"{item.StartLocal.ToString("t", _strings.Culture)} – {end.ToString("t", _strings.Culture)}"
@@ -808,9 +810,10 @@ internal sealed partial class CelestialWindow : Window
     {
         var name = item.Kind switch
         {
-            CelestialEventKind.Holiday when item.CalendarCountryCode is { } code
-                && CelestialCalendarCountries.All.Any(country => country.Code == code)
-                => $"holiday-{code.ToLowerInvariant()}-v1.png",
+            CelestialEventKind.Holiday when item.CalendarArtworkFileName is { } artwork
+                && artwork.EndsWith(".png", StringComparison.Ordinal)
+                && artwork.All(character => char.IsAsciiLetterOrDigit(character) || character is '-' or '_' or '.')
+                => artwork,
             CelestialEventKind.Saint when item.CalendarEntryKey is { } key
                 && key.All(char.IsLetterOrDigit)
                 => $"saint-{key}-v1.png",

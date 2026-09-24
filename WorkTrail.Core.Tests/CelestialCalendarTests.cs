@@ -23,6 +23,8 @@ public sealed class CelestialCalendarTests
         Assert.Equal(17, catalog.Countries.Count);
         Assert.Equal(565, catalog.Holidays.Count);
         Assert.Equal(211, catalog.Saints.Count);
+        Assert.All(catalog.Holidays, holiday => Assert.Matches("^[A-Za-z0-9._-]+\\.png$", holiday.ArtworkFileName));
+        Assert.Contains(catalog.Holidays, holiday => holiday.ArtworkFileName == "new-year-v1.png");
         Assert.Contains(catalog.Saints, saint => saint.EventKey == "StFrancisAssisi"
             && saint.NameLatin.Contains("Francisci", StringComparison.Ordinal));
     }
@@ -42,7 +44,7 @@ public sealed class CelestialCalendarTests
 
             using var connection = new SqliteConnection($"Data Source={store.ActivityDatabasePath};Pooling=False");
             connection.Open();
-            Assert.Equal(11L, Scalar(connection, "PRAGMA user_version;"));
+            Assert.Equal(12L, Scalar(connection, "PRAGMA user_version;"));
             Assert.Equal(17L, Scalar(connection, "SELECT COUNT(*) FROM calendar_countries;"));
             Assert.Equal(565L, Scalar(connection, "SELECT COUNT(*) FROM calendar_holidays;"));
             Assert.Equal(211L, Scalar(connection, "SELECT COUNT(*) FROM calendar_saints;"));
@@ -54,36 +56,7 @@ public sealed class CelestialCalendarTests
     }
 
     [Fact]
-    public void VersionTenDatabase_MigratesCalendarSchemaInPlace()
-    {
-        var directory = Path.Combine(Path.GetTempPath(), "WorkTrail.CalendarMigrationTests", Guid.NewGuid().ToString("N"));
-        try
-        {
-            var store = new LocalStore(directory);
-            using (var connection = new SqliteConnection($"Data Source={store.ActivityDatabasePath};Pooling=False"))
-            {
-                connection.Open();
-                using var command = connection.CreateCommand();
-                command.CommandText = "DROP TABLE calendar_holidays; DROP TABLE calendar_saints; "
-                    + "DROP TABLE calendar_countries; DROP TABLE calendar_dataset; PRAGMA user_version = 10;";
-                command.ExecuteNonQuery();
-            }
-
-            var reopened = new LocalStore(directory);
-            reopened.EnsureCelestialCalendar(CelestialCalendarCatalog.Current);
-            using var verify = new SqliteConnection($"Data Source={reopened.ActivityDatabasePath};Pooling=False");
-            verify.Open();
-            Assert.Equal(11L, Scalar(verify, "PRAGMA user_version;"));
-            Assert.Equal(211L, Scalar(verify, "SELECT COUNT(*) FROM calendar_saints;"));
-        }
-        finally
-        {
-            if (Directory.Exists(directory)) Directory.Delete(directory, recursive: true);
-        }
-    }
-
-    [Fact]
-    public void Events_StayAfterLocalSunriseAndRespectSelections()
+    public void Events_StartAtNineLocalAndDeduplicateSelectedHolidays()
     {
         var city = new WorldClockCitySummary("rome", "Rome", "IT", "Europe/Rome", 41.9028, 12.4964, true);
         var instant = new DateTimeOffset(2026, 9, 24, 0, 0, 0, TimeSpan.Zero);
@@ -93,17 +66,20 @@ public sealed class CelestialCalendarTests
         var today = new DateOnly(2026, 9, 24);
         var holidays = new[]
         {
-            new CelestialCalendarHoliday(today, "IT", "Test holiday", "holiday", "rule_based", "https://example.com"),
-            new CelestialCalendarHoliday(today, "FR", "Other country", "holiday", "rule_based", "https://example.com"),
-            new CelestialCalendarHoliday(today, "IT", "Make-up day", "workday", "rule_based", "https://example.com")
+            new CelestialCalendarHoliday(
+                today, "IT", "Test holiday", "holiday", "rule_based", "holiday-it-v1.png", "https://example.com"),
+            new CelestialCalendarHoliday(
+                today, "FR", "Other country", "holiday", "rule_based", "holiday-fr-v1.png", "https://example.com"),
+            new CelestialCalendarHoliday(
+                today, "IT", "Make-up day", "workday", "rule_based", "holiday-it-v1.png", "https://example.com")
         };
         var saints = new[] { new CelestialCalendarSaint(9, 24, "OwnerOurLadyOfMercy", "Beatae Mariae Virginis de Mercede", "https://example.com") };
-        var calendar = CelestialCalendarEventService.Build(snapshot, zone, holidays, saints, ["IT"], true, CancellationToken.None);
-        var sunrise = Assert.Single(snapshot.Agenda, item => item.Kind == CelestialEventKind.Sunrise
-            && DateOnly.FromDateTime(item.StartLocal.DateTime) == today);
+        var calendar = CelestialCalendarEventService.Build(snapshot, zone, holidays, saints, ["IT", "FR"], true, CancellationToken.None);
         Assert.Equal(2, calendar.Count);
-        Assert.All(calendar, item => Assert.True(item.StartUtc > sunrise.StartUtc));
+        Assert.All(calendar,
+            item => Assert.Equal(new TimeOnly(9, 0), TimeOnly.FromDateTime(item.StartLocal.DateTime)));
         Assert.Equal(CelestialEventKind.Holiday, calendar[0].Kind);
+        Assert.Equal("holiday-fr-v1.png", calendar[0].CalendarArtworkFileName);
         Assert.Equal(CelestialEventKind.Saint, calendar[1].Kind);
         Assert.Empty(CelestialCalendarEventService.Build(snapshot, zone, holidays, saints, [], false, CancellationToken.None));
     }

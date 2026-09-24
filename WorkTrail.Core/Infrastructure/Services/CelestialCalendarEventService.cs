@@ -1,6 +1,5 @@
 // SPDX-License-Identifier: MIT
 
-using CosineKitty;
 using WorkTrail.Application;
 
 namespace WorkTrail.Services;
@@ -21,7 +20,6 @@ internal static class CelestialCalendarEventService
         var endUtc = snapshot.InstantUtc.AddDays(2);
         var startDate = DateOnly.FromDateTime(snapshot.LocalTime.DateTime);
         var endDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(endUtc, zone).DateTime);
-        var observer = new Observer(snapshot.Latitude, snapshot.Longitude, 0);
         var events = new List<CelestialAgendaEvent>();
 
         for (var date = startDate; date <= endDate; date = date.AddDays(1))
@@ -37,26 +35,27 @@ internal static class CelestialCalendarEventService
                 continue;
             }
 
-            // Calendar entries are all-day observances; the event instant is only their visual sort anchor.
-            // A polar day without sunrise uses local noon rather than fabricating a solar crossing.
-            var anchor = SunriseOrNoon(date, observer, zone, cancellationToken);
-            var offset = 0;
-            foreach (var holiday in national)
+            var anchor = AtNineLocal(date, zone);
+            if (national.Length > 0 && anchor < endUtc)
             {
-                var instant = anchor.AddSeconds(++offset);
-                if (instant >= endUtc) continue;
-                events.Add(new CelestialAgendaEvent(CelestialEventKind.Holiday, instant, null,
-                    TimeZoneInfo.ConvertTime(instant, zone), null,
+                // National calendars can overlap; the agenda renders one representative holiday at the shared local time.
+                var holiday = national
+                    .OrderBy(item => item.ArtworkFileName, StringComparer.Ordinal)
+                    .ThenBy(item => item.Name, StringComparer.Ordinal)
+                    .ThenBy(item => item.Country, StringComparer.Ordinal)
+                    .First();
+                events.Add(new CelestialAgendaEvent(CelestialEventKind.Holiday, anchor, null,
+                    TimeZoneInfo.ConvertTime(anchor, zone), null,
                     CalendarCountryCode: holiday.Country, CalendarLabel: holiday.Name,
-                    CalendarQuality: holiday.Quality, CalendarDate: date));
+                    CalendarQuality: holiday.Quality, CalendarArtworkFileName: holiday.ArtworkFileName,
+                    CalendarDate: date));
             }
 
             foreach (var saint in dailySaints)
             {
-                var instant = anchor.AddSeconds(++offset);
-                if (instant >= endUtc) continue;
-                events.Add(new CelestialAgendaEvent(CelestialEventKind.Saint, instant, null,
-                    TimeZoneInfo.ConvertTime(instant, zone), null,
+                if (anchor >= endUtc) continue;
+                events.Add(new CelestialAgendaEvent(CelestialEventKind.Saint, anchor, null,
+                    TimeZoneInfo.ConvertTime(anchor, zone), null,
                     CalendarLabel: saint.NameLatin, CalendarEntryKey: saint.EventKey, CalendarDate: date));
             }
         }
@@ -64,23 +63,6 @@ internal static class CelestialCalendarEventService
         return events;
     }
 
-    private static DateTimeOffset SunriseOrNoon(DateOnly date, Observer observer, TimeZoneInfo zone,
-        CancellationToken cancellationToken)
-    {
-        var noon = TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(new TimeOnly(12, 0)), zone);
-        var search = new AstroTime(noon.AddHours(-18));
-        for (var index = 0; index < 3; index++)
-        {
-            cancellationToken.ThrowIfCancellationRequested();
-            var rise = Astronomy.SearchRiseSet(Body.Sun, observer, Direction.Rise, search, 2.0);
-            if (rise is null) break;
-            var instant = new DateTimeOffset(rise.ToUtcDateTime());
-            var localDate = DateOnly.FromDateTime(TimeZoneInfo.ConvertTime(instant, zone).DateTime);
-            if (localDate == date) return instant;
-            if (localDate > date) break;
-            search = rise.AddDays(1.0 / 86400);
-        }
-
-        return new DateTimeOffset(noon);
-    }
+    private static DateTimeOffset AtNineLocal(DateOnly date, TimeZoneInfo zone) =>
+        new(TimeZoneInfo.ConvertTimeToUtc(date.ToDateTime(new TimeOnly(9, 0)), zone));
 }

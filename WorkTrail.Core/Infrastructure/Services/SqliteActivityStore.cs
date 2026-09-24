@@ -14,7 +14,7 @@ internal sealed partial class SqliteActivityStore
 {
     internal const string DatabaseFileName = "activity.sqlite3";
     /// <summary>Defines the current persisted SQLite contract, shared with portable archive validation.</summary>
-    internal const int SchemaVersion = 11;
+    internal const int SchemaVersion = 12;
     private const long FixedEstimatedRowBytes = 96;
 
     private static readonly SchemaColumn[] ExpectedActivityColumns =
@@ -2642,12 +2642,6 @@ internal sealed partial class SqliteActivityStore
                 }
 
                 CreateSchema(connection);
-                version = ReadSchemaVersion(connection);
-            }
-
-            if (version == 10)
-            {
-                MigrateCalendarSchema(connection);
                 version = ReadSchemaVersion(connection);
             }
 
